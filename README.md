@@ -1,67 +1,83 @@
 # Fractal Resonance 🌌🎵
 
-**Fractal Resonance** is a full-stack, mathematics-driven generative art platform that converts any song into an infinite, self-repeating fractal. It uses audio signal processing and lyrical analysis to dynamically mutate complex mathematical equations (like the Mandelbrot Set and Koch Snowflake), rendering a completely unique, mathematically perfect visual signature for every track.
+**Fractal Resonance** is a full-stack, mathematics-driven generative art platform that converts any song into an infinite, self-repeating fractal. It uses audio signal processing (`librosa`) and lyrical analysis to dynamically mutate complex mathematical equations. 
 
-## ✨ Features
-- **Acoustic Mathematics:** Replaces generic noise algorithms with true recursive fractals. Choose between the Mandelbrot Set, Koch Snowflake, Dragon Curve, or an Organic Recursive Tree.
-- **Intelligent Audio Analysis:** Powered by `librosa`, the backend extracts the exact Tempo (BPM), Energy, Brightness, and Timbral Complexity from an uploaded `.mp3` or `.wav`.
-- **Lyrical Topology:** Integrates with the iTunes Search API for intelligent typo resolution, then fetches the raw lyrics to calculate symmetry and structural repetition scores.
-- **Dynamic Chromatics:** The generated fractal is rendered using a color palette and zoom level perfectly mapped to the song's energy and emotional brightness.
-- **Immersive UI:** A stunning, Awwwards-inspired React frontend featuring Framer Motion animations, a premium glassmorphic control panel, and dynamic background wallpapers that adapt to the generated fractal.
-- **The Mathematics Exposed:** A dedicated UI section that reveals the exact equations, axioms, and rules used to render your specific image, detailing exactly how the audio mutated the math.
+The application has been engineered to production standards, featuring **Interactive WebGL GPU Shaders**, **Real-Time Audio Reactivity**, **MP4 Video Exporting**, and full **Docker containerization**.
+
+## ✨ Core Features
+
+### 1. Interactive 3D GPU Rendering (WebGL)
+Instead of static images, the **Mandelbrot Set** engine is fully WebGL-accelerated using `Three.js` and custom GLSL fragment shaders. 
+- **Infinite Zoom:** Click and drag to pan, and use your scroll wheel or the floating UI controls to infinitely zoom into the mathematical structure in real-time at 60 FPS.
+- **Audio Reactivity:** Built with the **Web Audio API**, the fractal physically pulses, zooms, and shifts chromatic intensity in real-time to the beat of your playing audio file.
+
+### 2. Acoustic Mathematics & Signal Processing
+The backend uses `librosa` to extract the exact Tempo (BPM), Energy, Brightness, and Timbral Complexity from uploaded audio. These features are injected as *mutation vectors* into mathematical equations (Mandelbrot Set, Koch Snowflake, Dragon Curve, Sierpinski Geometry).
+- For example, the song's **Energy** alters the focal point $C$ in the Mandelbrot equation, and the **BPM** dictates the recursive depth.
+
+### 3. Server-Side Video Export
+The backend features an asynchronous video rendering pipeline utilizing `imageio` and `ffmpeg`. It mathematically calculates and renders unique fractal frames over time, compiling them into a smooth H.264 MP4 looping video ready for social media.
+
+### 4. Lyrical Topology
+Integrates with the iTunes Search API for intelligent typo resolution, then fetches the raw lyrics to calculate symmetry and structural repetition scores.
+
+### 5. Immersive "Glassmorphic" UI
+A stunning, Awwwards-inspired React frontend featuring `Framer Motion` animations, a premium glassmorphic control panel, and dynamic background wallpapers that sync to the currently generated fractal.
+
+---
 
 ## 🛠 Tech Stack
-### Frontend
-- **React.js & Vite** for lightning-fast module bundling.
-- **TailwindCSS** for a responsive, modern, brutalist design system.
-- **Framer Motion** for buttery-smooth scroll animations and layout transitions.
 
-### Backend
-- **FastAPI** (Python) for a highly performant, asynchronous backend architecture.
-- **Librosa & NumPy** for deep audio signal processing and complex mathematical generation.
-- **Pillow (PIL)** for rendering and post-processing the high-resolution fractal arrays.
-- **httpx** for asynchronous external API requests (iTunes & Lyrics.ovh).
+### Frontend & Graphics
+- **React.js & Vite** for lightning-fast module bundling.
+- **Three.js, React Three Fiber & Drei** for WebGL 3D/2D canvas rendering and custom GPU shaders.
+- **Web Audio API** for real-time frequency analysis.
+- **TailwindCSS** for responsive, brutalist styling.
+- **Framer Motion** for buttery-smooth scroll animations.
+
+### Backend & Audio Processing
+- **FastAPI (Python)** for a highly performant, asynchronous backend architecture.
+- **Librosa & NumPy** for deep audio signal processing and complex math generation.
+- **ImageIO & FFmpeg** for headless MP4 video rendering.
+- **Pillow (PIL)** for rendering high-resolution static fractal arrays.
+
+### DevOps
+- **Docker & Docker Compose** for instant, replicable containerized deployment.
+- **GitHub Actions** for CI/CD automated syntax testing and build verification.
+
+---
 
 ## 🚀 Getting Started
 
-### Prerequisites
-Make sure you have Node.js (v18+) and Python (v3.9+) installed.
+### Option 1: Run via Docker (Recommended)
+You can boot up the entire full-stack application (frontend + backend + proxy networks) with a single command:
+```bash
+docker-compose up -d --build
+```
+The app will be instantly available at `http://localhost:5173`.
 
-### Backend Setup
-1. Navigate to the backend directory:
-   ```bash
-   cd backend
-   ```
-2. Install the required Python dependencies:
-   ```bash
-   pip3 install -r requirements.txt
-   ```
-3. Start the FastAPI server:
-   ```bash
-   python3 -m uvicorn app.main:app --reload
-   ```
-   *The backend will be running at `http://localhost:8000`.*
+### Option 2: Run Locally
 
-### Frontend Setup
-1. Navigate to the frontend directory:
-   ```bash
-   cd frontend
-   ```
-2. Install the Node modules:
-   ```bash
-   npm install
-   ```
-3. Start the Vite development server:
-   ```bash
-   npm run dev
-   ```
-   *The frontend will be running at `http://localhost:5173`.*
+**1. Backend Setup**
+```bash
+cd backend
+python3 -m pip install -r requirements.txt
+python3 -m uvicorn app.main:app --reload
+```
+*Runs on `http://localhost:8000`.*
 
-## 🧠 How It Works
-1. **The Input:** You submit a song title, artist name, and optionally an audio file.
-2. **The Analysis:** The backend uses iTunes to intelligently correct typos, fetches the lyrics, and uses `librosa` to extract the acoustic footprint (BPM, Energy, Symmetry).
-3. **The Mutation:** These acoustic features are injected into a mathematical equation (e.g. $Z_{n+1} = Z_n^2 + C$). For instance, the song's Energy alters the focal point $C$, and the BPM dictates the zoom level.
-4. **The Render:** A uniquely seeded, high-resolution fractal is generated, bloomed, and passed back to the frontend to act as your dynamic, immersive wallpaper!
+**2. Frontend Setup**
+```bash
+cd frontend
+npm install
+npm run dev
+```
+*Runs on `http://localhost:5173`.*
+
+---
+
+## 🧠 The Mathematics Exposed
+The application features a dedicated "Mathematics" UI section that reveals the exact equations, axioms, and rules used to render your specific image. It details exactly how the audio mutated the math, ensuring full transparency behind the generative art.
 
 ## 📝 License
 This project is open-source and available under the MIT License.

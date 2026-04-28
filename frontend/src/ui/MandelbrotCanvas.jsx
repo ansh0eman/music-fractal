@@ -16,7 +16,8 @@ const MandelbrotShaderMaterial = {
     varying vec2 vUv;
     void main() {
       vUv = uv;
-      gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+      // Bypass camera matrices to ensure the plane exactly fills the entire screen
+      gl_Position = vec4(position, 1.0);
     }
   `,
   fragmentShader: `
@@ -90,7 +91,7 @@ const MandelbrotShaderMaterial = {
   `
 };
 
-const ShaderPlane = ({ uniforms, audioData }) => {
+const ShaderPlane = ({ uniforms, audioData, dynamicParams }) => {
   const meshRef = useRef();
   const { size } = useThree();
 
@@ -107,17 +108,16 @@ const ShaderPlane = ({ uniforms, audioData }) => {
     if (material) {
       material.uniforms.u_resolution.value.set(size.width, size.height);
       
-      // Update audio energy uniform
-      if (audioData && audioData.current) {
+      // Update audio energy uniform safely
+      if (audioData && audioData.current !== undefined) {
         material.uniforms.u_audio_energy.value = audioData.current;
       }
 
-      // We read the camera's position to allow MapControls to pan and zoom
-      // MapControls changes camera.position.x/y and camera.zoom
-      material.uniforms.u_zoom.value = uniforms.zoom * state.camera.zoom;
+      // Read zoom and pan from dynamicParams
+      material.uniforms.u_zoom.value = dynamicParams.current.zoom;
       material.uniforms.u_center.value.set(
-        uniforms.center_x + state.camera.position.x,
-        uniforms.center_y + state.camera.position.y
+        dynamicParams.current.center_x,
+        dynamicParams.current.center_y
       );
       
       material.uniforms.u_max_iter.value = uniforms.max_iter;
@@ -138,13 +138,90 @@ const ShaderPlane = ({ uniforms, audioData }) => {
 };
 
 export function MandelbrotCanvas({ uniforms, audioData }) {
+  const shaderParams = useRef({
+    zoom: uniforms.zoom,
+    center_x: uniforms.center_x,
+    center_y: uniforms.center_y
+  });
+
+  const isDragging = useRef(false);
+  const previousMouse = useRef({ x: 0, y: 0 });
+
+  const handlePointerDown = (e) => {
+    isDragging.current = true;
+    previousMouse.current = { x: e.clientX, y: e.clientY };
+  };
+
+  const handlePointerUp = () => {
+    isDragging.current = false;
+  };
+
+  const handlePointerMove = (e) => {
+    if (isDragging.current) {
+      const dx = e.clientX - previousMouse.current.x;
+      const dy = e.clientY - previousMouse.current.y;
+      
+      const panSpeed = 0.003 / shaderParams.current.zoom;
+      shaderParams.current.center_x -= dx * panSpeed;
+      shaderParams.current.center_y += dy * panSpeed;
+      
+      previousMouse.current = { x: e.clientX, y: e.clientY };
+    }
+  };
+
+  const handleWheel = (e) => {
+    e.stopPropagation();
+    const zoomFactor = 1.1;
+    if (e.deltaY < 0) {
+      shaderParams.current.zoom *= zoomFactor;
+    } else {
+      shaderParams.current.zoom /= zoomFactor;
+    }
+  };
+
+  const zoomIn = (e) => {
+    e.stopPropagation();
+    shaderParams.current.zoom *= 1.5;
+  };
+
+  const zoomOut = (e) => {
+    e.stopPropagation();
+    shaderParams.current.zoom /= 1.5;
+  };
+
   return (
-    <Canvas 
-      camera={{ position: [0, 0, 1], zoom: 1, near: 0.1, far: 1000 }} 
-      orthographic
-    >
-      <ShaderPlane uniforms={uniforms} audioData={audioData} />
-      <MapControls enableRotate={false} zoomSpeed={2.0} panSpeed={1.0} />
-    </Canvas>
+    <div className="w-full h-full relative">
+      <div 
+        className="w-full h-full touch-none"
+        onPointerDown={handlePointerDown}
+        onPointerUp={handlePointerUp}
+        onPointerLeave={handlePointerUp}
+        onPointerMove={handlePointerMove}
+        onWheel={handleWheel}
+      >
+        <Canvas 
+          camera={{ position: [0, 0, 1], zoom: 1, near: 0.1, far: 1000 }} 
+          orthographic
+        >
+          <ShaderPlane uniforms={uniforms} audioData={audioData} dynamicParams={shaderParams} />
+        </Canvas>
+      </div>
+
+      {/* Floating Controls */}
+      <div className="absolute top-6 right-6 flex gap-4 z-[100] pointer-events-auto">
+        <button 
+          onClick={zoomIn} 
+          className="bg-white text-black hover:bg-gray-200 px-6 py-3 rounded-full flex items-center justify-center font-bold tracking-widest uppercase text-xs shadow-[0_0_20px_rgba(255,255,255,0.4)] transition-all"
+        >
+          Zoom In (+)
+        </button>
+        <button 
+          onClick={zoomOut} 
+          className="bg-white text-black hover:bg-gray-200 px-6 py-3 rounded-full flex items-center justify-center font-bold tracking-widest uppercase text-xs shadow-[0_0_20px_rgba(255,255,255,0.4)] transition-all"
+        >
+          Zoom Out (-)
+        </button>
+      </div>
+    </div>
   );
 }

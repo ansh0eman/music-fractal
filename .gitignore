@@ -17,3 +17,4 @@ env/
 # Static assets (generated)
 backend/static/*.png
 backend/static/*.jpg
+backend/static/*.mp4

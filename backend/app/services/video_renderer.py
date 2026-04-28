@@ -10,9 +10,10 @@ logger = logging.getLogger(__name__)
 
 class VideoRenderer:
     def __init__(self, fractal_renderer: FractalRenderer):
-        self.fractal_renderer = fractal_renderer
+        # We create a lower-resolution renderer specifically for fast video generation
+        self.fast_renderer = FractalRenderer(width=512, height=512)
 
-    def render_video(self, features: Dict[str, float], song_title: str, artist_name: str, overrides: Dict[str, Any], duration: int = 5, fps: int = 30) -> str:
+    def render_video(self, features: Dict[str, float], song_title: str, artist_name: str, overrides: Dict[str, Any], duration: int = 3, fps: int = 24) -> str:
         """
         Renders a looping video of the fractal by mutating the energy/features over time.
         Returns the path to the generated MP4 file.
@@ -38,13 +39,13 @@ class VideoRenderer:
                  frame_features["complexity"] = features.get("complexity", 0.5) + (pulse * 0.5)
             
             # Render frame
-            img, _ = self.fractal_renderer.render(frame_features, song_title, artist_name, overrides)
+            img, _ = self.fast_renderer.render(frame_features, song_title, artist_name, overrides)
             frames.append(np.array(img))
             
         # Save to temp file
         import hashlib
         import uuid
-        seed = self.fractal_renderer.generate_seed(song_title, artist_name)
+        seed = self.fast_renderer.generate_seed(song_title, artist_name)
         filename_hash = hashlib.md5(f"{song_title}:{artist_name}:{seed}:{uuid.uuid4()}".encode()).hexdigest()[:12]
         
         static_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "..", "static")

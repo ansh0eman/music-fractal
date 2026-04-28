@@ -189,6 +189,7 @@ async def generate_fractal(
         depth=fractal_metadata["depth"],
         color_palette=fractal_metadata["color_palette"],
         seed=fractal_metadata["seed"],
+        math_details=fractal_metadata.get("math_details"),
     )
 
     return GenerateResponse(
