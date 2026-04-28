@@ -6,3 +6,5 @@ numpy
 Pillow
 librosa
 python-multipart
+imageio
+imageio-ffmpeg

@@ -12,6 +12,7 @@ from app.services.lyrics_client import LyricsClient
 from app.services.lyrics_analyzer import LyricsAnalyzer
 from app.services.audio_analyzer import AudioAnalyzer
 from app.services.fractal_renderer import FractalRenderer
+from app.services.video_renderer import VideoRenderer
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -24,6 +25,7 @@ lyrics_client = LyricsClient()
 lyrics_analyzer = LyricsAnalyzer()
 audio_analyzer = AudioAnalyzer()
 fractal_renderer = FractalRenderer(width=1024, height=1024)
+video_renderer = VideoRenderer(fractal_renderer)
 
 # Create static directory for images (relative to backend/)
 STATIC_DIR = Path(__file__).parent.parent / "static"
@@ -199,7 +201,51 @@ async def generate_fractal(
     )
 
 
+class VideoExportResponse(BaseModel):
+    video_url: str
+
+@app.post("/api/export_video", response_model=VideoExportResponse)
+async def export_video(
+    song_title: str = Form(...),
+    artist_name: Optional[str] = Form(None),
+    audio_file: Optional[UploadFile] = File(None),
+    override_model: Optional[str] = Form("auto"),
+    override_palette: Optional[str] = Form("auto"),
+    override_depth: Optional[int] = Form(None)
+) -> VideoExportResponse:
+    song_title = song_title.strip()
+    artist_name = artist_name.strip() if artist_name else None
+
+    # Step 1: Analyze audio if provided
+    audio_features = {}
+    if audio_file and audio_file.filename:
+        try:
+            with tempfile.NamedTemporaryFile(delete=False, suffix=".tmp") as temp_file:
+                content = await audio_file.read()
+                temp_file.write(content)
+                temp_path = temp_file.name
+                
+            audio_features = audio_analyzer.extract_features(temp_path)
+            os.remove(temp_path)
+        except Exception as e:
+            logger.error(f"Error processing audio file: {e}")
+            audio_features = audio_analyzer._default_features()
+    else:
+        audio_features = audio_analyzer._default_features()
+
+    overrides = {
+        "model": override_model,
+        "palette": override_palette,
+        "depth": override_depth
+    }
+
+    try:
+        video_url = video_renderer.render_video(audio_features, song_title, artist_name or "", overrides)
+        return VideoExportResponse(video_url=video_url)
+    except Exception as e:
+        logger.error(f"Error rendering video: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Failed to export video.")
+
 @app.get("/health")
 async def health() -> Dict[str, Any]:
     return {"status": "ok"}
-

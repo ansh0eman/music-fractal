@@ -279,7 +279,14 @@ class FractalRenderer:
         math_details = {
             "equation": "Z_{n+1} = Z_n^2 + C, Z_0 = 0",
             "description": "The Mandelbrot Set marks the set of complex numbers 'c' for which the function does not diverge when iterated. The zoom level and focal point are driven by the track's Energy and BPM.",
-            "dynamic_variables": f"Max Iterations: {max_iter}, Zoom Level: {zoom:.2f}x, Focus (C): {center_x:.2f} + {center_y:.2f}i"
+            "dynamic_variables": f"Max Iterations: {max_iter}, Zoom Level: {zoom:.2f}x, Focus (C): {center_x:.2f} + {center_y:.2f}i",
+            "shader_uniforms": {
+                "max_iter": max_iter,
+                "zoom": zoom,
+                "center_x": center_x,
+                "center_y": center_y,
+                "palette": params["palette"]
+            }
         }
         return Image.fromarray(img_array, 'RGB'), math_details
 

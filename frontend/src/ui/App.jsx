@@ -1,6 +1,7 @@
 import React, { useState, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Upload, ArrowRight, ArrowDown, Settings, Download, RefreshCw } from "lucide-react";
+import { Upload, ArrowRight, ArrowDown, Settings, Download, RefreshCw, Video, Play, Pause } from "lucide-react";
+import { MandelbrotCanvas } from "./MandelbrotCanvas";
 
 export function App() {
   const [form, setForm] = useState({ 
@@ -14,7 +15,88 @@ export function App() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [result, setResult] = useState(null);
+  const [exportingVideo, setExportingVideo] = useState(false);
+  const [videoUrl, setVideoUrl] = useState(null);
+  
   const fileInputRef = useRef(null);
+  const audioRef = useRef(null);
+  const audioDataRef = useRef(0.0);
+  const audioContextRef = useRef(null);
+  const analyserRef = useRef(null);
+  const sourceRef = useRef(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+
+  const setupAudioContext = () => {
+    if (!audioRef.current) return;
+    if (!audioContextRef.current) {
+      audioContextRef.current = new (window.AudioContext || window.webkitAudioContext)();
+      analyserRef.current = audioContextRef.current.createAnalyser();
+      analyserRef.current.fftSize = 256;
+      sourceRef.current = audioContextRef.current.createMediaElementSource(audioRef.current);
+      sourceRef.current.connect(analyserRef.current);
+      analyserRef.current.connect(audioContextRef.current.destination);
+      
+      const updateAudioData = () => {
+        if (analyserRef.current) {
+          const dataArray = new Uint8Array(analyserRef.current.frequencyBinCount);
+          analyserRef.current.getByteFrequencyData(dataArray);
+          let sum = 0;
+          for (let i = 0; i < dataArray.length; i++) {
+            sum += dataArray[i];
+          }
+          const average = sum / dataArray.length;
+          audioDataRef.current = average / 255.0;
+        }
+        requestAnimationFrame(updateAudioData);
+      };
+      updateAudioData();
+    }
+  };
+
+  const togglePlay = () => {
+    if (audioRef.current) {
+      if (isPlaying) {
+        audioRef.current.pause();
+      } else {
+        setupAudioContext();
+        if (audioContextRef.current.state === 'suspended') {
+          audioContextRef.current.resume();
+        }
+        audioRef.current.play();
+      }
+      setIsPlaying(!isPlaying);
+    }
+  };
+
+  const handleExportVideo = async () => {
+    setExportingVideo(true);
+    setError("");
+    try {
+      const formData = new FormData();
+      formData.append("song_title", form.songTitle);
+      if (form.artistName) formData.append("artist_name", form.artistName);
+      if (audioFile) formData.append("audio_file", audioFile);
+      formData.append("override_model", form.model);
+      formData.append("override_palette", form.palette);
+      if (form.depth) formData.append("override_depth", form.depth);
+
+      const res = await fetch("/api/export_video", {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!res.ok) {
+        throw new Error("VIDEO EXPORT FAILED.");
+      }
+
+      const data = await res.json();
+      setVideoUrl(data.video_url);
+    } catch (err) {
+      setError(err.message || "SYSTEM ERROR.");
+    } finally {
+      setExportingVideo(false);
+    }
+  };
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -251,18 +333,48 @@ export function App() {
                 </h2>
                 
                 <div className="w-full aspect-square md:aspect-[21/9] max-h-[75vh] rounded-3xl flex items-center justify-center overflow-hidden bg-black/60 backdrop-blur-2xl border border-white/20 relative group shadow-2xl">
-                  <img src={result.image_url} alt="Fractal Art" className="w-full h-full object-contain mix-blend-screen" />
+                  {result.fractal.model === "mandelbrot" && result.fractal.math_details?.shader_uniforms ? (
+                    <div className="w-full h-full cursor-grab active:cursor-grabbing">
+                      <MandelbrotCanvas uniforms={result.fractal.math_details.shader_uniforms} audioData={audioDataRef} />
+                    </div>
+                  ) : (
+                    <img src={result.image_url} alt="Fractal Art" className="w-full h-full object-contain mix-blend-screen" />
+                  )}
                   
                   {/* Action Bar Overlay */}
-                  <div className="absolute bottom-0 left-0 w-full p-8 bg-gradient-to-t from-black via-black/80 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 flex justify-center gap-6">
+                  <div className="absolute bottom-0 left-0 w-full p-8 bg-gradient-to-t from-black via-black/80 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 flex flex-wrap justify-center gap-4">
+                    {audioFile && (
+                      <>
+                        <audio 
+                          ref={audioRef} 
+                          src={URL.createObjectURL(audioFile)} 
+                          onEnded={() => setIsPlaying(false)}
+                          crossOrigin="anonymous"
+                        />
+                        <button onClick={togglePlay} className="bg-white hover:bg-gray-200 text-black px-6 py-3 rounded-full text-xs tracking-widest uppercase flex items-center gap-2 transition-all duration-300 shadow-xl">
+                          {isPlaying ? <><Pause size={14} /> Pause</> : <><Play size={14} /> Play</>}
+                        </button>
+                      </>
+                    )}
                     <button onClick={handleSubmit} className="bg-white/20 hover:bg-white text-white hover:text-black px-6 py-3 rounded-full text-xs tracking-widest uppercase flex items-center gap-2 transition-all duration-300 backdrop-blur-md border border-white/30">
                       <RefreshCw size={14} /> Regenerate
                     </button>
-                    <a href={result.image_url} download={`Fractal-${result.song_title}.png`} className="bg-white hover:bg-gray-200 text-black px-6 py-3 rounded-full text-xs tracking-widest uppercase flex items-center gap-2 transition-all duration-300 shadow-xl">
-                      <Download size={14} /> Download
+                    <a href={result.image_url} download={`Fractal-${result.song_title}.png`} className="bg-white/20 hover:bg-white text-white hover:text-black px-6 py-3 rounded-full text-xs tracking-widest uppercase flex items-center gap-2 transition-all duration-300 backdrop-blur-md border border-white/30">
+                      <Download size={14} /> PNG
                     </a>
+                    <button onClick={handleExportVideo} disabled={exportingVideo} className="bg-white hover:bg-gray-200 text-black px-6 py-3 rounded-full text-xs tracking-widest uppercase flex items-center gap-2 transition-all duration-300 shadow-xl disabled:opacity-50">
+                      {exportingVideo ? <><RefreshCw size={14} className="animate-spin" /> Rendering...</> : <><Video size={14} /> MP4 Video</>}
+                    </button>
                   </div>
                 </div>
+                
+                {videoUrl && (
+                  <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="mt-8 text-center">
+                    <a href={videoUrl} download={`Fractal-${result.song_title}.mp4`} className="text-white hover:text-gray-300 underline tracking-[0.2em] uppercase text-xs">
+                      Video Ready: Click to Download MP4
+                    </a>
+                  </motion.div>
+                )}
               </motion.div>
             </section>
 
